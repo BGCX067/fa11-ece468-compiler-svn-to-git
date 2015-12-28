@@ -1,0 +1,76 @@
+;LABEL f
+;LINK
+;STOREI 2 $T1
+;ADDI a $T1 $T2
+;STOREI $T2 ret
+;STOREI ret $R
+;RET
+;LABEL main
+;LINK
+;WRITES input
+;READI num
+;STOREI 1 $T3
+;SUBI num $T3 $T4
+;STOREI $T4 result
+;PUSH
+;PUSH result
+;JSR f
+;POP
+;POP $T5
+;STOREF $T5 result
+;WRITEI result
+;WRITES eol
+;STOREI 1 $R
+;RET
+str input "Please enter an integer number: "
+str eol "\n"
+push
+push r0
+push r1
+push r2
+push r3
+jsr main
+sys halt
+label f
+link 2
+move 2 r0
+move $6 r1
+addi r2 r1
+move r1 r0
+move r0 $-1
+move $-1 r3
+move r3 $7
+unlnk
+ret
+label main
+link 2
+sys writes input
+sys readi $-1
+move 1 r0
+move $-1 r1
+subi r0 r1
+move r1 r2
+move r2 $-2
+push
+push $-2
+push r0
+push r1
+push r2
+push r3
+jsr f
+pop r3
+pop r2
+pop r1
+pop r0
+pop
+pop r0
+move r0 $-2
+sys writei $-2
+sys writes eol
+move 1 r0
+move r0 $6
+unlnk
+ret
+unlnk
+ret
+end

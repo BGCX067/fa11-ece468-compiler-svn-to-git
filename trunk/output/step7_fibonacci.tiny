@@ -1,0 +1,127 @@
+;LABEL F
+;LINK
+;STOREI 2 $T1
+;LE n $T1 label0
+;RET
+;JUMP label1
+;LABEL label0
+;STOREI 0 $T2
+;NE n $T2 label2
+;STOREI 0 $R
+;RET
+;JUMP label3
+;LABEL label2
+;STOREI 1 $T3
+;NE n $T3 label4
+;STOREI 1 $R
+;RET
+;JUMP label5
+;LABEL label4
+;STOREI 1 $R
+;RET
+;LABEL label5
+;LABEL label3
+;LABEL label1
+;RET
+;LABEL main
+;LINK
+;STOREI 6 $T4
+;STOREI $T4 i
+;WRITES input
+;READI end
+;PUSH
+;PUSH i
+;JSR F
+;POP
+;POP $T5
+;STOREF $T5 result
+;WRITEI i
+;WRITES space
+;WRITEI result
+;WRITES eol
+;STOREI 1 $T6
+;ADDI i $T6 $T7
+;STOREI $T7 i
+;WRITEI i
+;RET
+str input "Please input an integer number: "
+str space " "
+str eol "\n"
+push
+push r0
+push r1
+push r2
+push r3
+jsr main
+sys halt
+label F
+link 1
+move 2 r0
+cmpi $6 r0
+jle label0
+unlnk
+ret
+jmp label1
+label label0
+move 0 r0
+cmpi $6 r0
+jne label2
+move 0 r2
+move r2 $7
+unlnk
+ret
+jmp label3
+label label2
+move 1 r0
+cmpi $6 r0
+jne label4
+move 1 r2
+move r2 $7
+unlnk
+ret
+jmp label5
+label label4
+move 1 r0
+move r0 $7
+unlnk
+ret
+label label5
+label label3
+label label1
+unlnk
+ret
+label main
+link 3
+move 6 r0
+move r0 $-1
+sys writes input
+sys readi $-2
+push
+push $-1
+push r0
+push r1
+push r2
+push r3
+jsr F
+pop r3
+pop r2
+pop r1
+pop r0
+pop
+pop r1
+move r1 $-3
+sys writei $-1
+sys writes space
+sys writei $-3
+sys writes eol
+move 1 r2
+move $-1 r3
+addi r2 r3
+move r3 r0
+move r0 $-1
+sys writei $-1
+unlnk
+ret
+unlnk
+ret
+end

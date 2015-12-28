@@ -1,0 +1,10 @@
+PROGRAM step4
+BEGIN
+
+	INT a, b, i, p;
+
+	FUNCTION VOID main()
+	BEGIN
+		i := 7;
+	END
+END

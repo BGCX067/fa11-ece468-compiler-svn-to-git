@@ -1,0 +1,246 @@
+#!/bin/csh 
+
+# Author: Sam Mussmann
+# Last revised: 02/10/2010
+
+# This script tests asm files in the asmFiles directory by
+# compiling them, running them through both sim, and a vsim 
+# source simulation of your CPU, and then diffing the memory
+# output files.  You can find the output of the memory diff
+# in memdiff.test and full output in output.log
+# If you do not wish to test all your asm files, you can give
+# this script a prefix on the command line, and it will only 
+# test files whose names match this prefix.
+# Also, note that the output files from the previous run are
+# saved at with a .bak suffix.
+# You can also run this script with the -h option for more help
+
+# Configuration variables
+@ synthesize = 0
+@ time_commands = 0
+@ echo_matches = 0
+@ ret_code = 0
+
+set prefix=""
+
+# Parse options
+# The first two lines set the arguments to the script to be the seperated out
+# options, then --, then non-option arguments
+# set temp=(`getopt -s tcsh -o ab:c:: --long a-long,b-long:,c-long:: -- $argv:q`)
+set temp=(`getopt -s tcsh -o stm:ghe -- $argv:q`)
+eval set argv=\($temp:q\)
+while ( 1 )
+    switch ( $1:q )
+    case -h:
+        goto print_help
+        breaksw
+    case -s:
+        @ synthesize = 1
+        grep -c -e "--.*altera_reserved_t\(ms\|ck\|di\)" source/tb_cpu.vhd > /dev/null
+        @ ret_code = $?
+        if ( $ret_code == 0 ) then
+            echo "WARNING: detected commented out altera lines in source/tb_cpu.vhd"
+            exit 1
+        endif
+        echo "Compiling source/tb_cpu.vhd"
+        vcom -93 source/tb_cpu.vhd
+        shift
+        breaksw
+    case -t:
+        @ time_commands = 1
+        echo "Will time simulation and report duration"
+        shift
+        breaksw
+    case -m:
+        $prefix make $2
+        if ( $? != 0 ) then
+            echo "make error.  terminating ..."
+            echo "You may want to make sure you're passing the target to make correctly"
+            exit 1
+        endif
+        shift; shift
+        breaksw
+    case -g:
+        set prefix="grid "
+        shift
+        breaksw
+    case -e:
+        @ echo_matches = 1
+        shift
+        breaksw
+    case --:
+        shift
+        break
+        breaksw
+    default:
+        echo "Illegal option $1"
+        exit 1
+        breaksw
+    endsw
+end
+
+# If we're not synthesizing, check for uncommented altera lines
+if ( $synthesize == 0 ) then
+
+    grep -c -e "^[^-].*altera_reserved_t\(ms\|ck\|di\)" ./source/tb_cpu.vhd > /dev/null
+
+    @ ret_code = $?
+    if ( $ret_code == 0 ) then
+        echo "WARNING: detected uncommented out altera lines in ./source/tb_cpu.vhd"
+        exit 1
+    endif
+endif
+
+if ( "" == $1 ) then
+    set files=asmFiles/*
+else
+    set files=""
+    while ( $1 != "" )
+        set files="$files asmFiles/$1*"
+        shift
+    end
+endif
+
+# Eliminate duplicate filenames
+set files=`ls -1 $files | uniq`
+
+# Print filenames, one on each line, if appropriate option set
+if ( $echo_matches ) then
+    echo "printing matches, but not executing tests:"
+    foreach file ($files)
+        echo $file
+    end
+    exit 0
+endif
+
+#filenames
+set MemDiffFile=memdiff.test
+set FullOutputFile=output.log
+set MyTemp=`mktemp`
+
+# Backup mem_init file
+mv meminit.hex meminit.hex.bak
+
+# Backup the last run's files
+if ( -e $MemDiffFile ) then
+    mv $MemDiffFile $MemDiffFile.bak
+endif
+if ( -e $FullOutputFile ) then
+    mv $FullOutputFile $FullOutputFile.bak
+endif
+
+# For progress counters
+@ total = `echo $files | wc -w`
+@ count = 1 
+
+# For colorization
+set red="\033[1;31m"
+set green="\033[1;32m"
+set endcolor="\033[0m"
+# To disable color, comment above section, and uncomment below
+# set red=""
+# set green=""
+# set endcolor=""
+
+# If we get an interrupt (Ctrl+C), go to the cleanup label
+# This allows us to, among other things, replace meminit.hex with original version
+onintr cleanup
+
+    # If we're synthesizing, then compile cpu and vcom mapped/cpu.vhd
+if ($synthesize ) then
+    #compile -s cpu #>> $FullOutputFile
+    vcom -93 mapped/cpu.vhd #>> $FullOutputFile
+endif
+
+# Now process each file
+foreach file ($files)
+    # Echo to stdout
+    printf "%s" "processing file $file ($count of $total) "
+    # Echo this to the log files
+    echo "processing file $file ($count of $total)" >> $MemDiffFile
+    echo "processing file $file ($count of $total)" >> $FullOutputFile
+    # Now, process file
+    asm $file
+    # If we're timing, then get epoch time from before we start
+    if ( $time_commands ) then
+        @ e_time = `date +%s`
+    endif
+
+    # If we're synthesizing, then compile cpu and vcom mapped/cpu.vhd
+    #if ($synthesize ) then
+    #    compile -s cpu >> $FullOutputFile
+    #    vcom -93 mapped/cpu.vhd >> $FullOutputFile
+    #endif
+
+    # Run vsim and sim
+    $prefix vsim -wlf "`basename $file`.wlf" -do "run 400 us; exit;" -c work.tb_cpu >> $FullOutputFile
+    sim >> $FullOutputFile
+    # Set e_time to the current epoch time minus the preceding recorded time.
+    # This gives us the total elapsed time
+    if ( $time_commands ) then
+        @ e_time = `date +%s` - $e_time
+    endif
+    # Save diff
+    /usr/bin/diff -u memout.hex memdump.hex >& $MyTemp
+    @ diff_fail = $?
+    # If we're timing, output the time vsim took, and set the output
+    # string appropriately for right aligned pass/fail output
+    if ( $time_commands ) then
+        set output = "processing file $file ($count of $total) ${e_time}sec "
+        printf "%s" "${e_time}sec "
+        echo "took $e_time seconds" >> $FullOutputFile
+    else
+        set output = "processing file $file ($count of $total) "
+    endif
+    # Get the column width, the width of the initial output text, 
+    # and the width of the string to pad the result and force it 
+    # to the right hand column
+    @ colwidth = `resize | grep COLUMN - | cut -f2 -d"'"`
+    @ outputlength = `echo $output | wc -c`
+    @ padding = $colwidth - ($outputlength + 8)
+    printf "%-${padding}s"
+    # If diff returned zero, then we passed.
+    if ( $diff_fail == 0 ) then
+        echo "[${green}PASSED${endcolor}]"
+    else
+        echo "[${red}FAILED${endcolor}]"
+    endif
+    # If diff encountered an error (usually no memout.hex) then it returns 2
+    if ( $diff_fail == 2 ) then
+        echo "diff encountered error:  probably means no memory dump from vsim"
+    endif
+    # Add the mem diff to both the files
+    cat $MyTemp >> $MemDiffFile
+    cat $MyTemp >> $FullOutputFile
+    # Increment the file counter
+    @ count += 1
+end
+
+
+cleanup:
+# Restore meminit.hex
+mv meminit.hex.bak meminit.hex
+
+
+exit 0
+
+print_help:
+echo
+echo "Usage: $0 [options] [file_patterns]"
+echo
+echo "If no file patterns are given, this script will run all asm"
+echo "\tfiles in the asmFiles/ directory"
+echo "For each pattern given, this script will test"
+echo "\tall files matching asmFiles/pattern*"
+echo "Note that duplicate files are not removed"
+echo
+echo "The following options are accepted:"
+echo "\t-s\t\ttest_asm will synthesize and test your cpu"
+echo "\t-t\t\ttest_asm will time the simulation run"
+echo "\t-m target\trun 'make target' before testing"
+echo "\t\t\t\tNote: exactly one target must be specified"
+echo "\t-g\t\tprefix vsim/make with grid"
+echo "\t-e\t\tEcho all the files that would be tested,"
+echo "\t\t\t\tbut don't test them"
+echo "\t-h\t\tprint this help"
+exit 0

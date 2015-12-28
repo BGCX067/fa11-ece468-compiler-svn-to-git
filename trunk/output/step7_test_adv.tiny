@@ -1,0 +1,84 @@
+;LABEL main
+;LINK
+;STOREF 0.0001 tolerance
+;STOREF 7.0 num
+;STOREF num $T1
+;STOREF $T1 approx
+;STOREI 0 count
+;STOREF 0.0 diff
+;STOREI 0 enough
+;STOREI 56 $T2
+;STOREI $T2 b
+;LABEL label0
+;STOREF 0.0 $T3
+;LE diff $T3 label1
+;GE diff tolerance label3
+;STOREI 1 enough
+;LABEL label3
+;JUMP label2
+;LABEL label1
+;STOREF 0.0 $T4
+;SUBR $T4 tolerance $T5
+;LE diff $T5 label4
+;STOREI 1 enough
+;LABEL label4
+;LABEL label2
+;STOREF newapprox $T6
+;STOREF $T6 approx
+;STOREI 0 $T7
+;WRITER approx
+;WRITEI count
+;RET
+var count
+var enough
+var newapprox
+var approx
+var num
+var tolerance
+var diff
+push
+push r0
+push r1
+push r2
+push r3
+jsr main
+sys halt
+label main
+link 1
+move 0.0001 tolerance
+move 7.0 num
+move num r0
+move r0 approx
+move 0 count
+move 0.0 diff
+move 0 enough
+move 56 r1
+move r1 $-1
+label label0
+move 0.0 r2
+cmpi diff r2
+jle label1
+cmpi diff r0
+jge label3
+move 1 enough
+label label3
+jmp label2
+label label1
+move 0.0 r1
+subr r0 r2
+move r2 r1
+cmpi diff r1
+jle label4
+move 1 enough
+label label4
+label label2
+move newapprox r1
+move r1 approx
+move 0 r2
+sys writer approx
+sys writei count
+unlnk
+ret
+unlnk
+ret
+end

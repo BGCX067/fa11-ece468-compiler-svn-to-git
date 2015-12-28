@@ -1,0 +1,58 @@
+var a
+var k
+var g
+var p
+var u
+push
+push r0
+push r1
+push r2
+push r3
+jsr main
+sys halt
+label main
+link 0
+move 1 r0
+move r0 a
+label lbl_0
+move 1 r0
+cmpi a r0
+jne lbl_1
+move 1 r1
+muli a r1
+move r1 g
+sys writei g
+label lbl_1
+move 2 r0
+cmpi a r0
+jne lbl_2
+move 2 r1
+muli a r1
+move r1 p
+sys writei p
+label lbl_2
+move 3 r0
+cmpi a r0
+jne lbl_3
+move 3 r1
+muli a r1
+move r1 k
+sys writei k
+label lbl_3
+move 4 r0
+cmpi a r0
+jne lbl_4
+move 4 r1
+muli a r1
+move r1 u
+sys writei u
+label lbl_4
+move a r1
+addi 20 r1
+move r1 a
+move 121 r0
+cmpi a r0
+jlt lbl_0
+unlnk
+ret
+end

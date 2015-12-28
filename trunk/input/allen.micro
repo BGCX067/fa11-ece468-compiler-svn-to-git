@@ -1,0 +1,28 @@
+PROGRAM allen
+BEGIN
+	STRING input := "Please enter an integer number: ";
+	STRING eol := "\n";
+		
+	FUNCTION INT f(INT a)
+	BEGIN
+		INT ret;
+
+		ret := a+2;
+			
+		RETURN ret;
+	END
+
+	FUNCTION INT main ()
+	BEGIN
+		INT num;
+		INT result;
+
+		WRITE(input);
+		READ(num);
+		result := num-1;
+		result := f(result); 
+		
+		WRITE(result,eol);
+		RETURN 1;
+	END
+END

@@ -1,0 +1,3 @@
+group T;
+
+function(x) ::= "FUNC x"
